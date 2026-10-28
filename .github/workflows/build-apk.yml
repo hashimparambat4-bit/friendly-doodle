@@ -1,6 +1,6 @@
 name: Build HASHIM Nursing APK from ZIP
 
-'on':
+"on":
   workflow_dispatch:
   push:
     branches:
@@ -8,7 +8,7 @@ name: Build HASHIM Nursing APK from ZIP
     paths:
       - '.github/workflows/build-apk.yml'
       - 'HASHIM_Nursing_GitHub_APK_Build_Ready_With_Icon.zip'
-      - 'HASHIM_Nursing_GitHub_APK_Build_Ready.zip''
+      - 'HASHIM_Nursing_GitHub_APK_Build_Ready.zip'
 
 permissions:
   contents: read
@@ -18,37 +18,31 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Check out repository
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Locate and extract project ZIP
+      - name: Extract project ZIP
         shell: bash
         run: |
           set -euo pipefail
 
-          ZIP_FILE=""
-          for candidate in \
-            "HASHIM_Nursing_GitHub_APK_Build_Ready_With_Icon.zip" \
-            "HASHIM_Nursing_GitHub_APK_Build_Ready.zip"; do
-            if [ -f "$candidate" ]; then
-              ZIP_FILE="$candidate"
-              break
-            fi
-          done
+          ZIP_FILE="HASHIM_Nursing_GitHub_APK_Build_Ready_With_Icon.zip"
 
-          if [ -z "$ZIP_FILE" ]; then
-            echo "::error::Upload the HASHIM Nursing project ZIP to the repository root."
+          if [ ! -f "$ZIP_FILE" ]; then
+            ZIP_FILE="HASHIM_Nursing_GitHub_APK_Build_Ready.zip"
+          fi
+
+          if [ ! -f "$ZIP_FILE" ]; then
+            echo "ERROR: Project ZIP not found in repository root."
             exit 1
           fi
 
           mkdir -p extracted-project
           unzip -q "$ZIP_FILE" -d extracted-project
 
-          if [ ! -f extracted-project/android-app/settings.gradle ] || \
-             [ ! -f extracted-project/android-app/app/build.gradle ]; then
-            echo "::error::The ZIP does not contain the expected Android project files."
-            echo "Files found in ZIP:"
-            find extracted-project -maxdepth 5 -type f | head -100
+          if [ ! -f extracted-project/android-app/settings.gradle ]; then
+            echo "ERROR: Android project files not found in extracted ZIP."
+            find extracted-project -maxdepth 4 -type f | head -100
             exit 1
           fi
 
@@ -63,15 +57,14 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Build debug APK
+      - name: Build APK
         working-directory: extracted-project/android-app
         run: gradle --no-daemon assembleDebug
 
-      - name: Upload APK artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: hashim-nursing-debug-apk
           path: extracted-project/android-app/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
-          
