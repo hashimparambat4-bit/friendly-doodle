@@ -1,14 +1,14 @@
 name: Build HASHIM Nursing APK from ZIP
 
-# Quote "on" to avoid YAML parsers treating it as a boolean key.
 'on':
   workflow_dispatch:
   push:
     branches:
       - main
     paths:
+      - '.github/workflows/build-apk.yml'
       - 'HASHIM_Nursing_GitHub_APK_Build_Ready_With_Icon.zip'
-      - 'HASHIM_Nursing_GitHub_APK_Build_Ready.zip'
+      - 'HASHIM_Nursing_GitHub_APK_Build_Ready.zip''
 
 permissions:
   contents: read
