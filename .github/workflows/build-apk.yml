@@ -8,6 +8,7 @@ name: Build HASHIM Nursing APK
       - main
     paths:
       - '.github/workflows/build-apk.yml'
+      - 'HASHIM_Nursing_Royal_Gold_Theme.zip'
       - 'HASHIM_Nursing_Updated_Design.zip'
       - 'HASHIM_Nursing_Fixed_Swipe_Scroll.zip'
       - 'HASHIM_Nursing_Fixed_Screen_Bottom_Navigation.zip'
@@ -34,7 +35,9 @@ jobs:
 
           ZIP_FILE=""
 
+          # Prefer Royal Gold theme, then fall back to older ZIPs.
           for FILE in \
+            "HASHIM_Nursing_Royal_Gold_Theme.zip" \
             "HASHIM_Nursing_Updated_Design.zip" \
             "HASHIM_Nursing_Fixed_Swipe_Scroll.zip" \
             "HASHIM_Nursing_Fixed_Screen_Bottom_Navigation.zip" \
