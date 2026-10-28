@@ -1,12 +1,14 @@
-name: Build HASHIM Nursing APK from ZIP
+name: Build HASHIM Nursing APK
 
 "on":
   workflow_dispatch:
+
   push:
     branches:
       - main
     paths:
       - '.github/workflows/build-apk.yml'
+      - 'HASHIM_Nursing_Updated_Design.zip'
       - 'HASHIM_Nursing_Fixed_Swipe_Scroll.zip'
       - 'HASHIM_Nursing_Fixed_Screen_Bottom_Navigation.zip'
       - 'HASHIM_Nursing_GitHub_APK_Build_Ready_With_Icon.zip'
@@ -17,58 +19,59 @@ permissions:
 
 jobs:
   build:
+    name: Build Android APK
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Extract project ZIP
+      - name: Extract Android project
         id: extract
         shell: bash
         run: |
           set -euo pipefail
 
-          ZIP_FILE="HASHIM_Nursing_Fixed_Swipe_Scroll.zip"
+          ZIP_FILE=""
 
-          if [ ! -f "$ZIP_FILE" ]; then
-            ZIP_FILE="HASHIM_Nursing_Fixed_Screen_Bottom_Navigation.zip"
-          fi
+          for FILE in \
+            "HASHIM_Nursing_Updated_Design.zip" \
+            "HASHIM_Nursing_Fixed_Swipe_Scroll.zip" \
+            "HASHIM_Nursing_Fixed_Screen_Bottom_Navigation.zip" \
+            "HASHIM_Nursing_GitHub_APK_Build_Ready_With_Icon.zip" \
+            "HASHIM_Nursing_GitHub_APK_Build_Ready.zip"
+          do
+            if [ -f "$FILE" ]; then
+              ZIP_FILE="$FILE"
+              break
+            fi
+          done
 
-          if [ ! -f "$ZIP_FILE" ]; then
-            ZIP_FILE="HASHIM_Nursing_GitHub_APK_Build_Ready_With_Icon.zip"
-          fi
-
-          if [ ! -f "$ZIP_FILE" ]; then
-            ZIP_FILE="HASHIM_Nursing_GitHub_APK_Build_Ready.zip"
-          fi
-
-          if [ ! -f "$ZIP_FILE" ]; then
-            echo "ERROR: No project ZIP found in repository root."
+          if [ -z "$ZIP_FILE" ]; then
+            echo "::error::No supported project ZIP found in the repository root."
             exit 1
           fi
 
-          echo "Using project: $ZIP_FILE"
+          echo "Using project ZIP: $ZIP_FILE"
 
           mkdir -p extracted-project
           unzip -q "$ZIP_FILE" -d extracted-project
 
-          SETTINGS_FILE=$(find extracted-project -type f \
-            \( -name settings.gradle -o -name settings.gradle.kts \) \
-            -print -quit)
+          SETTINGS_FILE="$(find extracted-project -type f \
+            \( -name 'settings.gradle' -o -name 'settings.gradle.kts' \) \
+            -print -quit)"
 
           if [ -z "$SETTINGS_FILE" ]; then
-            echo "ERROR: Android settings.gradle file not found."
-            find extracted-project -maxdepth 6 -type f | head -100
+            echo "::error::settings.gradle or settings.gradle.kts was not found."
+            find extracted-project -maxdepth 5 -type f | head -100
             exit 1
           fi
 
-          ANDROID_DIR="${SETTINGS_FILE%/*}"
+          ANDROID_DIR="$(dirname "$SETTINGS_FILE")"
 
           if [ ! -f "$ANDROID_DIR/app/build.gradle" ] && \
              [ ! -f "$ANDROID_DIR/app/build.gradle.kts" ]; then
-            echo "ERROR: Android app Gradle build file not found."
-            find "$ANDROID_DIR" -maxdepth 4 -type f | head -100
+            echo "::error::The app module Gradle file was not found."
             exit 1
           fi
 
@@ -80,7 +83,6 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-          cache: gradle
 
       - name: Set up Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
@@ -94,7 +96,8 @@ jobs:
           set -euo pipefail
           gradle --no-daemon assembleDebug
 
-      - name: Verify APK
+      - name: Find and verify APK
+        id: apk
         shell: bash
         env:
           ANDROID_DIR: ${{ steps.extract.outputs.android_dir }}
@@ -104,18 +107,19 @@ jobs:
           APK_PATH="$ANDROID_DIR/app/build/outputs/apk/debug/app-debug.apk"
 
           if [ ! -f "$APK_PATH" ]; then
-            echo "ERROR: APK was not generated."
-            find "$ANDROID_DIR" -type f -name '*.apk'
+            echo "::error::Debug APK was not generated at the expected location."
+            find "$ANDROID_DIR" -type f -name '*.apk' || true
             exit 1
           fi
 
-          echo "APK generated successfully."
+          echo "apk_path=$APK_PATH" >> "$GITHUB_OUTPUT"
+          echo "APK generated successfully:"
           ls -lh "$APK_PATH"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: hashim-nursing-debug-apk
-          path: ${{ steps.extract.outputs.android_dir }}/app/build/outputs/apk/debug/app-debug.apk
+          path: ${{ steps.apk.outputs.apk_path }}
           if-no-files-found: error
           retention-days: 14
