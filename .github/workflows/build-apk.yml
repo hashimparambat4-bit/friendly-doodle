@@ -1,6 +1,7 @@
 name: Build HASHIM Nursing APK from ZIP
 
-on:
+# Quote "on" to avoid YAML parsers treating it as a boolean key.
+'on':
   workflow_dispatch:
   push:
     branches:
@@ -45,9 +46,9 @@ jobs:
 
           if [ ! -f extracted-project/android-app/settings.gradle ] || \
              [ ! -f extracted-project/android-app/app/build.gradle ]; then
-            echo "::error::The ZIP structure is not as expected. Expected android-app/settings.gradle and android-app/app/build.gradle."
+            echo "::error::The ZIP does not contain the expected Android project files."
             echo "Files found in ZIP:"
-            find extracted-project -maxdepth 4 -type f | head -100
+            find extracted-project -maxdepth 5 -type f | head -100
             exit 1
           fi
 
@@ -73,4 +74,3 @@ jobs:
           path: extracted-project/android-app/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
-          
