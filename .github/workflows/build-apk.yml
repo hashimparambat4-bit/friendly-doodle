@@ -1,6 +1,6 @@
-name: Build HASHIM Nursing APK
+name: Build RAILPREP Nursing APK
 
-"on":
+on:
   workflow_dispatch:
 
   push:
@@ -8,6 +8,7 @@ name: Build HASHIM Nursing APK
       - main
     paths:
       - '.github/workflows/build-apk.yml'
+      - 'RAILPREP_Nursing_Widget_Connected.zip'
       - 'HASHIM_Nursing_Royal_Gold_Theme.zip'
       - 'HASHIM_Nursing_Updated_Design.zip'
       - 'HASHIM_Nursing_Fixed_Swipe_Scroll.zip'
@@ -35,8 +36,8 @@ jobs:
 
           ZIP_FILE=""
 
-          # Prefer Royal Gold theme, then fall back to older ZIPs.
           for FILE in \
+            "RAILPREP_Nursing_Widget_Connected.zip" \
             "HASHIM_Nursing_Royal_Gold_Theme.zip" \
             "HASHIM_Nursing_Updated_Design.zip" \
             "HASHIM_Nursing_Fixed_Swipe_Scroll.zip" \
@@ -119,10 +120,10 @@ jobs:
           echo "APK generated successfully:"
           ls -lh "$APK_PATH"
 
-      - name: Upload APK
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: hashim-nursing-debug-apk
+          name: railprep-nursing-debug-apk
           path: ${{ steps.apk.outputs.apk_path }}
           if-no-files-found: error
           retention-days: 14
