@@ -8,6 +8,7 @@ on:
       - main
     paths:
       - '.github/workflows/build-apk.yml'
+      - 'RAILPREP_Nursing_Subject_Cards_Updated.zip'
       - 'RAILPREP_Nursing_Complete_Fixed_Project.zip'
       - 'RAILPREP_Nursing_Widget_Connected.zip'
       - 'RAILPREP_Nursing_Widget_Connected_With_Workflow.zip'
@@ -28,11 +29,9 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      # 1. Download repository files
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Select and extract the latest available project
       - name: Extract Android project
         id: extract
         shell: bash
@@ -42,6 +41,7 @@ jobs:
           ZIP_FILE=""
 
           for FILE in \
+            "RAILPREP_Nursing_Subject_Cards_Updated.zip" \
             "RAILPREP_Nursing_Complete_Fixed_Project.zip" \
             "RAILPREP_Nursing_Widget_Connected.zip" \
             "RAILPREP_Nursing_Widget_Connected_With_Workflow.zip" \
@@ -59,7 +59,7 @@ jobs:
           done
 
           if [ -z "$ZIP_FILE" ]; then
-            echo "::error::No supported project ZIP was found in the repository root."
+            echo "::error::No supported project ZIP found."
             exit 1
           fi
 
@@ -73,7 +73,7 @@ jobs:
             -print -quit)"
 
           if [ -z "$SETTINGS_FILE" ]; then
-            echo "::error::Gradle settings file not found in the ZIP."
+            echo "::error::Gradle settings file not found."
             find extracted-project -maxdepth 5 -type f | head -100
             exit 1
           fi
@@ -89,40 +89,35 @@ jobs:
           echo "android_dir=$ANDROID_DIR" >> "$GITHUB_OUTPUT"
 
           echo "Android project directory: $ANDROID_DIR"
-
-          echo "Project structure:"
           ls -la "$ANDROID_DIR"
 
-      # 3. Install Java
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      # 4. Configure Gradle
-      - name: Set up Gradle 8.9
+      - name: Set up Gradle fallback
+        if: ${{ hashFiles('extracted-project/**/gradlew') == '' }}
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
 
-      # 5. Check the Android SDK
       - name: Check Android SDK
         shell: bash
         run: |
           set -euo pipefail
 
-          if [ -z "${ANDROID_HOME:-}" ] && \
-             [ -z "${ANDROID_SDK_ROOT:-}" ]; then
-            echo "::error::Android SDK environment variables are not configured."
+          SDK_DIR="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+
+          if [ -z "$SDK_DIR" ] || [ ! -d "$SDK_DIR" ]; then
+            echo "::error::Android SDK not found."
             exit 1
           fi
 
-          echo "Android SDK environment:"
-          echo "ANDROID_HOME=${ANDROID_HOME:-not-set}"
-          echo "ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT:-not-set}"
+          echo "Android SDK: $SDK_DIR"
+          ls "$SDK_DIR/platforms" 2>/dev/null || true
 
-      # 6. Build the Android application
       - name: Build Debug APK
         working-directory: ${{ steps.extract.outputs.android_dir }}
         shell: bash
@@ -136,7 +131,6 @@ jobs:
             gradle --no-daemon assembleDebug
           fi
 
-      # 7. Locate the generated APK
       - name: Find and verify APK
         id: apk
         shell: bash
@@ -151,7 +145,7 @@ jobs:
             APK_PATH="$(find "$ANDROID_DIR" \
               -type f \
               -path '*/build/outputs/apk/debug/*.apk' \
-              -print -quit)"
+              -print -quit || true)"
           fi
 
           if [ -z "${APK_PATH:-}" ] || [ ! -f "$APK_PATH" ]; then
@@ -165,7 +159,6 @@ jobs:
           echo "APK generated successfully:"
           ls -lh "$APK_PATH"
 
-      # 8. Upload APK as a downloadable artifact
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
